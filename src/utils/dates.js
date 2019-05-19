@@ -31,6 +31,16 @@ let dates = {
     return dates.endOf(endOfMonth, 'week', localizer.startOfWeek())
   },
 
+  firstYearVisibleDay(date, localizer) {
+    let firstOfYear = dates.startOf(date, 'year')
+    return dates.startOf(firstOfYear, 'week', localizer.startOfWeek())
+  },
+
+  lastYearVisibleDay(date, localizer) {
+    let endOfYear = dates.endOf(date, 'month')
+    return dates.endOf(endOfYear, 'week', localizer.startOfWeek())
+  },
+
   visibleDays(date, localizer) {
     let current = dates.firstVisibleDay(date, localizer),
       last = dates.lastVisibleDay(date, localizer),

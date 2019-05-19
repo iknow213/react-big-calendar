@@ -6,6 +6,7 @@ export let navigate = {
 }
 
 export let views = {
+  YEAR: 'year',
   MONTH: 'month',
   WEEK: 'week',
   WORK_WEEK: 'work_week',

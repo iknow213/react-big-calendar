@@ -15,8 +15,9 @@ import { events, Calendar } from './helpers'
 storiesOf('Big Calendar', module)
   .add('demo', () => (
     <Calendar
-      popup
       events={demoEvents}
+      defaultView={Calendar.Views.YEAR}
+      views={['year', 'month', 'week']}
       onSelectEvent={action('event selected')}
       defaultDate={new Date(2015, 3, 1)}
     />
