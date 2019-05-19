@@ -1,0 +1,51 @@
+@import './variables';
+
+.month-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.year-week {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.year-month {
+  flex: 1;
+  padding: 15px 30px;
+}
+
+.year-day {
+  display: flex;
+  padding: 2px 3px;
+  font-size: 14px;
+}
+
+.month-header, .month-weekdays {
+  display: flex;
+  flex-direction: row;
+}
+
+.month-header {
+  font-weight: bold;
+  text-align: center;
+  padding-bottom: 10px;
+}
+
+.month-weekdays {
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+
+.out-of-range-day {
+  color: #d3d3d3
+}
+
+.with-events {
+  background-color: #3174ad;
+  border-radius: 50%;
+  text-decoration: none;
+  color: #fff;
+}
