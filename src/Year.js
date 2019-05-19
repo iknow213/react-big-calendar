@@ -6,8 +6,23 @@ import dates from './utils/dates'
 import chunk from 'lodash/chunk'
 
 import { navigate } from './utils/constants'
+import { inRange } from './utils/eventLevels'
+import Popup from './Popup'
+import Overlay from 'react-overlays/Overlay'
+import getPosition from 'dom-helpers/query/position'
+import { findDOMNode } from 'react-dom'
 
 class YearView extends React.Component {
+  constructor(...args) {
+    super(...args)
+
+    this.state = {
+      overlay: null,
+    }
+
+    this.eventsByDay = new Map()
+  }
+
   render() {
     let { date, localizer, className } = this.props,
       month = dates.visibleDays(date, localizer),
@@ -24,6 +39,7 @@ class YearView extends React.Component {
             {row.map(this.renderMonth)}
           </div>
         ))}
+        {this.props.popup && this.renderOverlay()}
       </div>
     )
   }
@@ -66,16 +82,100 @@ class YearView extends React.Component {
   renderDay = (day, monthStartDate) => {
     const { localizer } = this.props
     const label = localizer.format(day, 'dateFormat')
+    const dayEvents = this.getDayEvents(day)
+    const isOutOfMonth = dates.month(day) !== dates.month(monthStartDate)
+
+    if (dayEvents.length && !isOutOfMonth) {
+      return this.renderDayWithEvents(day, label, dayEvents)
+    }
 
     return (
       <div
         className={cn('year-day', {
-          'out-of-range-day': dates.month(day) !== dates.month(monthStartDate),
+          'out-of-range-day': isOutOfMonth,
         })}
         key={label}
       >
-        {localizer.format(day, 'dateFormat')}
+        {label}
       </div>
+    )
+  }
+
+  renderDayWithEvents(day, label, dayEvents) {
+    return (
+      <a
+        key={label}
+        href="#"
+        className={cn('year-day', 'with-events')}
+        onClick={e => this.handleShowMore(e, dayEvents, day)}
+      >
+        {label}
+      </a>
+    )
+  }
+
+  handleShowMore = (e, events, date, cell, slot, target) => {
+    e.preventDefault()
+    const { popup } = this.props
+
+    if (popup) {
+      let position = getPosition(e.target, findDOMNode(this))
+
+      this.setState({
+        overlay: { date, events, position, target },
+      })
+    }
+  }
+
+  getDayEvents = date => {
+    const key = date.toString()
+    if (this.eventsByDay.has(key)) {
+      return this.eventsByDay.get(key)
+    }
+
+    const events = this.props.events.filter(e =>
+      inRange(
+        e,
+        dates.startOf(date, 'day'),
+        dates.endOf(date, 'day'),
+        this.props.accessors
+      )
+    )
+
+    this.eventsByDay.set(key, events)
+    return events
+  }
+
+  renderOverlay() {
+    let overlay = (this.state && this.state.overlay) || {}
+    let { accessors, localizer, components, getters, selected } = this.props
+
+    return (
+      <Overlay
+        rootClose
+        placement="bottom"
+        container={this}
+        show={!!overlay.position}
+        onHide={() => this.setState({ overlay: null })}
+        target={() => overlay.target}
+      >
+        {({ props }) => (
+          <Popup
+            {...props}
+            accessors={accessors}
+            getters={getters}
+            selected={selected}
+            components={components}
+            localizer={localizer}
+            position={overlay.position}
+            events={overlay.events}
+            slotStart={overlay.date}
+            slotEnd={overlay.end}
+            onSelect={this.handleSelectEvent}
+            onDoubleClick={this.handleDoubleClickEvent}
+          />
+        )}
+      </Overlay>
     )
   }
 }

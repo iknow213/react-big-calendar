@@ -37,7 +37,7 @@ let dates = {
   },
 
   lastYearVisibleDay(date, localizer) {
-    let endOfYear = dates.endOf(date, 'month')
+    let endOfYear = dates.endOf(date, 'year')
     return dates.endOf(endOfYear, 'week', localizer.startOfWeek())
   },
 

@@ -20,6 +20,7 @@
 .year-day {
   display: flex;
   padding: 2px 3px;
+  font-size: 14px;
 }
 
 .month-header, .month-weekdays {
@@ -40,4 +41,11 @@
 
 .out-of-range-day {
   color: #d3d3d3
+}
+
+.with-events {
+  background-color: #3174ad;
+  border-radius: 50%;
+  text-decoration: none;
+  color: #fff;
 }
