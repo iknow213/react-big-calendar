@@ -813,6 +813,54 @@ var YearView =
         _React$Component.call.apply(_React$Component, [this].concat(args)) ||
         this
 
+      _this.handleMouseDown = function(e) {
+        _this.setState({
+          firstSelected: null,
+          lastSelected: null,
+        })
+
+        if (!e.target || !e.target.dataset.date) {
+          return
+        }
+
+        _this.lastSelected = e.target.dataset.date
+        _this.selectionStart = Date.parse(e.target.dataset.date)
+
+        _this.setState({
+          firstSelected: _this.selectionStart,
+          lastSelected: null,
+        })
+      }
+
+      _this.handleMouseUp = function(e) {
+        if (!_this.selectionStart || !e.target || !e.target.dataset.date) {
+          return
+        }
+
+        _this.props.onSelectSlot({
+          start: _this.selectionStart,
+          end: Date.parse(e.target.dataset.date),
+        })
+
+        _this.selectionStart = null
+      }
+
+      _this.handleMouseMove = function(e) {
+        if (!_this.selectionStart || !e.target || !e.target.dataset.date) {
+          return
+        }
+
+        var nextDate = e.target.dataset.date
+
+        if (_this.lastSelected !== nextDate) {
+          _this.lastSelected = nextDate
+
+          _this.setState({
+            lastSelected: Date.parse(nextDate),
+          })
+        }
+      }
+
       _this.renderMonth = function(monthStartDate) {
         var localizer = _this.props.localizer
         var monthDays = dates.visibleDays(monthStartDate, localizer)
@@ -868,6 +916,17 @@ var YearView =
         var dayEvents = _this.getDayEvents(day)
 
         var isOutOfMonth = dates.month(day) !== dates.month(monthStartDate)
+        var style = {}
+
+        if (
+          day >= _this.state.firstSelected &&
+          day <= _this.state.lastSelected &&
+          !isOutOfMonth
+        ) {
+          style = {
+            background: 'lightblue',
+          }
+        }
 
         if (dayEvents.length && !isOutOfMonth) {
           return _this.renderDayWithEvents(day, label, dayEvents)
@@ -879,7 +938,9 @@ var YearView =
             className: cn('year-day', {
               'out-of-range-day': isOutOfMonth,
             }),
+            style: style,
             key: label,
+            'data-date': day.toISOString(),
           },
           label
         )
@@ -951,6 +1012,9 @@ var YearView =
         'div',
         {
           className: cn(className),
+          onMouseDown: this.handleMouseDown,
+          onMouseUp: this.handleMouseUp,
+          onMouseMove: this.handleMouseMove,
         },
         monthRows.map(function(row, key) {
           return React.createElement(
