@@ -68,6 +68,7 @@ class YearView extends React.Component {
       end: Date.parse(e.target.dataset.date),
     })
     this.selectionStart = null
+    this.setState({ firstSelected: null, lastSelected: null })
   }
 
   handleMouseMove = e => {

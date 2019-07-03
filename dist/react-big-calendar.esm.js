@@ -843,6 +843,11 @@ var YearView =
         })
 
         _this.selectionStart = null
+
+        _this.setState({
+          firstSelected: null,
+          lastSelected: null,
+        })
       }
 
       _this.handleMouseMove = function(e) {
