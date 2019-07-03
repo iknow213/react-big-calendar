@@ -15,12 +15,14 @@
 .year-month {
   flex: 1;
   padding: 15px 30px;
+  user-select: none;
 }
 
 .year-day {
   display: flex;
   padding: 2px 3px;
   font-size: 14px;
+  cursor: pointer;
 }
 
 .month-header, .month-weekdays {

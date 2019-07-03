@@ -33,7 +33,12 @@ class YearView extends React.Component {
     this._weekCount = weeks.length
 
     return (
-      <div className={cn(className)}>
+      <div
+        className={cn(className)}
+        onMouseDown={this.handleMouseDown}
+        onMouseUp={this.handleMouseUp}
+        onMouseMove={this.handleMouseMove}
+      >
         {monthRows.map((row, key) => (
           <div className="month-row" key={key}>
             {row.map(this.renderMonth)}
@@ -42,6 +47,38 @@ class YearView extends React.Component {
         {this.props.popup && this.renderOverlay()}
       </div>
     )
+  }
+
+  handleMouseDown = e => {
+    this.setState({ firstSelected: null, lastSelected: null })
+    if (!e.target || !e.target.dataset.date) {
+      return
+    }
+    this.lastSelected = e.target.dataset.date
+    this.selectionStart = Date.parse(e.target.dataset.date)
+    this.setState({ firstSelected: this.selectionStart, lastSelected: null })
+  }
+
+  handleMouseUp = e => {
+    if (!this.selectionStart || !e.target || !e.target.dataset.date) {
+      return
+    }
+    this.props.onSelectSlot({
+      start: this.selectionStart,
+      end: Date.parse(e.target.dataset.date),
+    })
+    this.selectionStart = null
+  }
+
+  handleMouseMove = e => {
+    if (!this.selectionStart || !e.target || !e.target.dataset.date) {
+      return
+    }
+    const nextDate = e.target.dataset.date
+    if (this.lastSelected !== nextDate) {
+      this.lastSelected = nextDate
+      this.setState({ lastSelected: Date.parse(nextDate) })
+    }
   }
 
   renderMonth = monthStartDate => {
@@ -85,6 +122,15 @@ class YearView extends React.Component {
     const dayEvents = this.getDayEvents(day)
     const isOutOfMonth = dates.month(day) !== dates.month(monthStartDate)
 
+    let style = {}
+    if (
+      day >= this.state.firstSelected &&
+      day <= this.state.lastSelected &&
+      !isOutOfMonth
+    ) {
+      style = { background: 'lightblue' }
+    }
+
     if (dayEvents.length && !isOutOfMonth) {
       return this.renderDayWithEvents(day, label, dayEvents)
     }
@@ -94,7 +140,9 @@ class YearView extends React.Component {
         className={cn('year-day', {
           'out-of-range-day': isOutOfMonth,
         })}
+        style={style}
         key={label}
+        data-date={day.toISOString()}
       >
         {label}
       </div>
