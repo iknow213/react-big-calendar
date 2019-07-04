@@ -12,7 +12,6 @@ import invariant from 'invariant'
 import _assertThisInitialized from '@babel/runtime/helpers/esm/assertThisInitialized'
 import dateMath from 'date-arithmetic'
 import chunk from 'lodash/chunk'
-import findIndex from 'lodash/findIndex'
 import getOffset from 'dom-helpers/query/offset'
 import getScrollTop from 'dom-helpers/query/scrollTop'
 import getScrollLeft from 'dom-helpers/query/scrollLeft'
@@ -25,6 +24,7 @@ import qsa from 'dom-helpers/query/querySelectorAll'
 import contains from 'dom-helpers/query/contains'
 import closest from 'dom-helpers/query/closest'
 import events from 'dom-helpers/events'
+import findIndex from 'lodash/findIndex'
 import range from 'lodash/range'
 import memoize from 'memoize-one'
 import _createClass from '@babel/runtime/helpers/esm/createClass'
@@ -347,110 +347,6 @@ var dates = _extends({}, dateMath, {
     return dates.add(dates.startOf(new Date(), 'day'), 1, 'day')
   },
 })
-
-function endOfRange(dateRange, unit) {
-  if (unit === void 0) {
-    unit = 'day'
-  }
-
-  return {
-    first: dateRange[0],
-    last: dates.add(dateRange[dateRange.length - 1], 1, unit),
-  }
-}
-function eventSegments(event, range, accessors) {
-  var _endOfRange = endOfRange(range),
-    first = _endOfRange.first,
-    last = _endOfRange.last
-
-  var slots = dates.diff(first, last, 'day')
-  var start = dates.max(dates.startOf(accessors.start(event), 'day'), first)
-  var end = dates.min(dates.ceil(accessors.end(event), 'day'), last)
-  var padding = findIndex(range, function(x) {
-    return dates.eq(x, start, 'day')
-  })
-  var span = dates.diff(start, end, 'day')
-  span = Math.min(span, slots)
-  span = Math.max(span, 1)
-  return {
-    event: event,
-    span: span,
-    left: padding + 1,
-    right: Math.max(padding + span, 1),
-  }
-}
-function eventLevels(rowSegments, limit) {
-  if (limit === void 0) {
-    limit = Infinity
-  }
-
-  var i,
-    j,
-    seg,
-    levels = [],
-    extra = []
-
-  for (i = 0; i < rowSegments.length; i++) {
-    seg = rowSegments[i]
-
-    for (j = 0; j < levels.length; j++) {
-      if (!segsOverlap(seg, levels[j])) break
-    }
-
-    if (j >= limit) {
-      extra.push(seg)
-    } else {
-      ;(levels[j] || (levels[j] = [])).push(seg)
-    }
-  }
-
-  for (i = 0; i < levels.length; i++) {
-    levels[i].sort(function(a, b) {
-      return a.left - b.left
-    }) //eslint-disable-line
-  }
-
-  return {
-    levels: levels,
-    extra: extra,
-  }
-}
-function inRange(e, start, end, accessors) {
-  var eStart = dates.startOf(accessors.start(e), 'day')
-  var eEnd = accessors.end(e)
-  var startsBeforeEnd = dates.lte(eStart, end, 'day') // when the event is zero duration we need to handle a bit differently
-
-  var endsAfterStart = !dates.eq(eStart, eEnd, 'minutes')
-    ? dates.gt(eEnd, start, 'minutes')
-    : dates.gte(eEnd, start, 'minutes')
-  return startsBeforeEnd && endsAfterStart
-}
-function segsOverlap(seg, otherSegs) {
-  return otherSegs.some(function(otherSeg) {
-    return otherSeg.left <= seg.right && otherSeg.right >= seg.left
-  })
-}
-function sortEvents(evtA, evtB, accessors) {
-  var startSort =
-    +dates.startOf(accessors.start(evtA), 'day') -
-    +dates.startOf(accessors.start(evtB), 'day')
-  var durA = dates.diff(
-    accessors.start(evtA),
-    dates.ceil(accessors.end(evtA), 'day'),
-    'day'
-  )
-  var durB = dates.diff(
-    accessors.start(evtB),
-    dates.ceil(accessors.end(evtB), 'day'),
-    'day'
-  )
-  return (
-    startSort || // sort by start Day first
-    Math.max(durB, 1) - Math.max(durA, 1) || // events spanning multiple days go first
-    !!accessors.allDay(evtB) - !!accessors.allDay(evtA) || // then allDay single day events
-    +accessors.start(evtA) - +accessors.start(evtB)
-  ) // then sort by start time
-}
 
 var EventCell =
   /*#__PURE__*/
@@ -793,6 +689,24 @@ var Popup$1 = React.forwardRef(function(props, ref) {
   )
 })
 
+function addDays(oldDate, days) {
+  var date = new Date(oldDate)
+  date.setDate(date.getDate() + days)
+  return date
+}
+
+function getDates(startDate, stopDate) {
+  var dateArray = new Array()
+  var currentDate = startDate
+
+  while (currentDate <= stopDate) {
+    dateArray.push(new Date(currentDate))
+    currentDate = addDays(currentDate, 1)
+  }
+
+  return dateArray
+}
+
 var YearView =
   /*#__PURE__*/
   (function(_React$Component) {
@@ -917,9 +831,7 @@ var YearView =
       _this.renderDay = function(day, monthStartDate) {
         var localizer = _this.props.localizer
         var label = localizer.format(day, 'dateFormat')
-
-        var dayEvents = _this.getDayEvents(day)
-
+        var dayEvents = _this.daysEventsMap[day.toString()] || []
         var isOutOfMonth = dates.month(day) !== dates.month(monthStartDate)
         var style = {}
 
@@ -972,44 +884,43 @@ var YearView =
         }
       }
 
-      _this.getDayEvents = function(date) {
-        var key = date.toString()
-
-        if (_this.eventsByDay.has(key)) {
-          return _this.eventsByDay.get(key)
-        }
-
-        var events = _this.props.events.filter(function(e) {
-          return inRange(
-            e,
-            dates.startOf(date, 'day'),
-            dates.endOf(date, 'day'),
-            _this.props.accessors
-          )
-        })
-
-        _this.eventsByDay.set(key, events)
-
-        return events
-      }
-
       _this.state = {
         overlay: null,
       }
       _this.eventsByDay = new Map()
+      _this.daysEventsMap = {}
+
+      _this.updateEventsMap(_this.props.events)
+
       return _this
     }
 
     var _proto = YearView.prototype
 
-    _proto.componentDidUpdate = function componentDidUpdate(prevProps) {
-      if (this.props.events.length !== prevProps.events.length) {
-        this.eventsByDay = new Map()
-      }
+    _proto.componentWillUpdate = function componentWillUpdate(nextProps) {
+      this.updateEventsMap(nextProps.events)
+    }
+
+    _proto.updateEventsMap = function updateEventsMap(events) {
+      var _this2 = this
+
+      this.daysEventsMap = {}
+      events.forEach(function(event) {
+        var daysDates = getDates(event.start, event.end)
+        daysDates.forEach(function(date) {
+          var key = date.toString()
+
+          if (!_this2.daysEventsMap[key]) {
+            _this2.daysEventsMap[key] = []
+          }
+
+          _this2.daysEventsMap[key].push(event)
+        })
+      })
     }
 
     _proto.render = function render() {
-      var _this2 = this
+      var _this3 = this
 
       var _this$props = this.props,
         date = _this$props.date,
@@ -1034,7 +945,7 @@ var YearView =
               className: 'month-row',
               key: key,
             },
-            row.map(_this2.renderMonth)
+            row.map(_this3.renderMonth)
           )
         }),
         this.props.popup && this.renderOverlay()
@@ -1062,7 +973,7 @@ var YearView =
       label,
       dayEvents
     ) {
-      var _this3 = this
+      var _this4 = this
 
       return React.createElement(
         'a',
@@ -1071,15 +982,31 @@ var YearView =
           href: '#',
           className: cn('year-day', 'with-events'),
           onClick: function onClick(e) {
-            return _this3.handleShowMore(e, dayEvents, day)
+            return _this4.handleShowMore(e, dayEvents, day)
           },
         },
         label
       )
     }
 
+    /*  getDayEvents = date => {
+     const key = date.toString()
+     if (this.eventsByDay.has(key)) {
+       return this.eventsByDay.get(key)
+     }
+      const events = this.props.events.filter(e =>
+       inRange(
+         e,
+         dates.startOf(date, 'day'),
+         dates.endOf(date, 'day'),
+         this.props.accessors
+       )
+     )
+      this.eventsByDay.set(key, events)
+     return events
+   } */
     _proto.renderOverlay = function renderOverlay() {
-      var _this4 = this
+      var _this5 = this
 
       var overlay = (this.state && this.state.overlay) || {}
       var _this$props2 = this.props,
@@ -1096,7 +1023,7 @@ var YearView =
           container: this,
           show: !!overlay.position,
           onHide: function onHide() {
-            return _this4.setState({
+            return _this5.setState({
               overlay: null,
             })
           },
@@ -1118,8 +1045,8 @@ var YearView =
               events: overlay.events,
               slotStart: overlay.date,
               slotEnd: overlay.end,
-              onSelect: _this4.handleSelectEvent,
-              onDoubleClick: _this4.handleDoubleClickEvent,
+              onSelect: _this5.handleSelectEvent,
+              onDoubleClick: _this5.handleDoubleClickEvent,
             })
           )
         }
@@ -2075,6 +2002,110 @@ EventRow.propTypes =
       )
     : {}
 EventRow.defaultProps = _extends({}, EventRowMixin.defaultProps)
+
+function endOfRange(dateRange, unit) {
+  if (unit === void 0) {
+    unit = 'day'
+  }
+
+  return {
+    first: dateRange[0],
+    last: dates.add(dateRange[dateRange.length - 1], 1, unit),
+  }
+}
+function eventSegments(event, range, accessors) {
+  var _endOfRange = endOfRange(range),
+    first = _endOfRange.first,
+    last = _endOfRange.last
+
+  var slots = dates.diff(first, last, 'day')
+  var start = dates.max(dates.startOf(accessors.start(event), 'day'), first)
+  var end = dates.min(dates.ceil(accessors.end(event), 'day'), last)
+  var padding = findIndex(range, function(x) {
+    return dates.eq(x, start, 'day')
+  })
+  var span = dates.diff(start, end, 'day')
+  span = Math.min(span, slots)
+  span = Math.max(span, 1)
+  return {
+    event: event,
+    span: span,
+    left: padding + 1,
+    right: Math.max(padding + span, 1),
+  }
+}
+function eventLevels(rowSegments, limit) {
+  if (limit === void 0) {
+    limit = Infinity
+  }
+
+  var i,
+    j,
+    seg,
+    levels = [],
+    extra = []
+
+  for (i = 0; i < rowSegments.length; i++) {
+    seg = rowSegments[i]
+
+    for (j = 0; j < levels.length; j++) {
+      if (!segsOverlap(seg, levels[j])) break
+    }
+
+    if (j >= limit) {
+      extra.push(seg)
+    } else {
+      ;(levels[j] || (levels[j] = [])).push(seg)
+    }
+  }
+
+  for (i = 0; i < levels.length; i++) {
+    levels[i].sort(function(a, b) {
+      return a.left - b.left
+    }) //eslint-disable-line
+  }
+
+  return {
+    levels: levels,
+    extra: extra,
+  }
+}
+function inRange(e, start, end, accessors) {
+  var eStart = dates.startOf(accessors.start(e), 'day')
+  var eEnd = accessors.end(e)
+  var startsBeforeEnd = dates.lte(eStart, end, 'day') // when the event is zero duration we need to handle a bit differently
+
+  var endsAfterStart = !dates.eq(eStart, eEnd, 'minutes')
+    ? dates.gt(eEnd, start, 'minutes')
+    : dates.gte(eEnd, start, 'minutes')
+  return startsBeforeEnd && endsAfterStart
+}
+function segsOverlap(seg, otherSegs) {
+  return otherSegs.some(function(otherSeg) {
+    return otherSeg.left <= seg.right && otherSeg.right >= seg.left
+  })
+}
+function sortEvents(evtA, evtB, accessors) {
+  var startSort =
+    +dates.startOf(accessors.start(evtA), 'day') -
+    +dates.startOf(accessors.start(evtB), 'day')
+  var durA = dates.diff(
+    accessors.start(evtA),
+    dates.ceil(accessors.end(evtA), 'day'),
+    'day'
+  )
+  var durB = dates.diff(
+    accessors.start(evtB),
+    dates.ceil(accessors.end(evtB), 'day'),
+    'day'
+  )
+  return (
+    startSort || // sort by start Day first
+    Math.max(durB, 1) - Math.max(durA, 1) || // events spanning multiple days go first
+    !!accessors.allDay(evtB) - !!accessors.allDay(evtA) || // then allDay single day events
+    +accessors.start(evtA) - +accessors.start(evtB)
+  ) // then sort by start time
+}
 
 var isSegmentInSlot = function isSegmentInSlot(seg, slot) {
   return seg.left <= slot && seg.right >= slot

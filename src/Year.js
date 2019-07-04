@@ -6,11 +6,27 @@ import dates from './utils/dates'
 import chunk from 'lodash/chunk'
 
 import { navigate } from './utils/constants'
-import { inRange } from './utils/eventLevels'
+//import { inRange } from './utils/eventLevels'
 import Popup from './Popup'
 import Overlay from 'react-overlays/Overlay'
 import getPosition from 'dom-helpers/query/position'
 import { findDOMNode } from 'react-dom'
+
+function addDays(oldDate, days) {
+  var date = new Date(oldDate)
+  date.setDate(date.getDate() + days)
+  return date
+}
+
+function getDates(startDate, stopDate) {
+  var dateArray = new Array()
+  var currentDate = startDate
+  while (currentDate <= stopDate) {
+    dateArray.push(new Date(currentDate))
+    currentDate = addDays(currentDate, 1)
+  }
+  return dateArray
+}
 
 class YearView extends React.Component {
   constructor(...args) {
@@ -21,12 +37,26 @@ class YearView extends React.Component {
     }
 
     this.eventsByDay = new Map()
+    this.daysEventsMap = {}
+    this.updateEventsMap(this.props.events)
   }
 
-  componentDidUpdate(prevProps) {
-    if (this.props.events.length !== prevProps.events.length) {
-      this.eventsByDay = new Map()
-    }
+  componentWillUpdate(nextProps) {
+    this.updateEventsMap(nextProps.events)
+  }
+
+  updateEventsMap(events) {
+    this.daysEventsMap = {}
+    events.forEach(event => {
+      const daysDates = getDates(event.start, event.end)
+      daysDates.forEach(date => {
+        const key = date.toString()
+        if (!this.daysEventsMap[key]) {
+          this.daysEventsMap[key] = []
+        }
+        this.daysEventsMap[key].push(event)
+      })
+    })
   }
 
   render() {
@@ -126,7 +156,7 @@ class YearView extends React.Component {
   renderDay = (day, monthStartDate) => {
     const { localizer } = this.props
     const label = localizer.format(day, 'dateFormat')
-    const dayEvents = this.getDayEvents(day)
+    const dayEvents = this.daysEventsMap[day.toString()] || []
     const isOutOfMonth = dates.month(day) !== dates.month(monthStartDate)
 
     let style = {}
@@ -182,7 +212,7 @@ class YearView extends React.Component {
     }
   }
 
-  getDayEvents = date => {
+  /*  getDayEvents = date => {
     const key = date.toString()
     if (this.eventsByDay.has(key)) {
       return this.eventsByDay.get(key)
@@ -199,7 +229,7 @@ class YearView extends React.Component {
 
     this.eventsByDay.set(key, events)
     return events
-  }
+  } */
 
   renderOverlay() {
     let overlay = (this.state && this.state.overlay) || {}
