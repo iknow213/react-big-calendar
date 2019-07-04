@@ -12565,6 +12565,12 @@
 
       var _proto = YearView.prototype
 
+      _proto.componentDidUpdate = function componentDidUpdate(prevProps) {
+        if (this.props.events.length !== prevProps.events.length) {
+          this.eventsByDay = new Map()
+        }
+      }
+
       _proto.render = function render() {
         var _this2 = this
 
