@@ -23,6 +23,12 @@ class YearView extends React.Component {
     this.eventsByDay = new Map()
   }
 
+  componentDidUpdate(prevProps) {
+    if (this.props.events.length !== prevProps.events.length) {
+      this.eventsByDay = new Map()
+    }
+  }
+
   render() {
     let { date, localizer, className } = this.props,
       month = dates.visibleDays(date, localizer),
