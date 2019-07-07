@@ -256,8 +256,8 @@ class YearView extends React.Component {
             events={overlay.events}
             slotStart={overlay.date}
             slotEnd={overlay.end}
-            onSelect={this.handleSelectEvent}
-            onDoubleClick={this.handleDoubleClickEvent}
+            onSelect={this.props.onSelectEvent}
+            onDoubleClick={this.props.onDoubleClickEvent}
           />
         )}
       </Overlay>

@@ -482,7 +482,7 @@ class Calendar extends React.Component {
      * ) => { className?: string, style?: Object }
      * ```
      */
-    eventPropGetter: PropTypes.func,
+    c: PropTypes.func,
 
     /**
      * Optionally provide a function that returns an object of className or style props

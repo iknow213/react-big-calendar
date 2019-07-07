@@ -990,21 +990,21 @@ var YearView =
     }
 
     /*  getDayEvents = date => {
-     const key = date.toString()
-     if (this.eventsByDay.has(key)) {
-       return this.eventsByDay.get(key)
-     }
-      const events = this.props.events.filter(e =>
-       inRange(
-         e,
-         dates.startOf(date, 'day'),
-         dates.endOf(date, 'day'),
-         this.props.accessors
-       )
-     )
-      this.eventsByDay.set(key, events)
-     return events
-   } */
+    const key = date.toString()
+    if (this.eventsByDay.has(key)) {
+      return this.eventsByDay.get(key)
+    }
+     const events = this.props.events.filter(e =>
+      inRange(
+        e,
+        dates.startOf(date, 'day'),
+        dates.endOf(date, 'day'),
+        this.props.accessors
+      )
+    )
+     this.eventsByDay.set(key, events)
+    return events
+  } */
     _proto.renderOverlay = function renderOverlay() {
       var _this5 = this
 
@@ -1045,8 +1045,8 @@ var YearView =
               events: overlay.events,
               slotStart: overlay.date,
               slotEnd: overlay.end,
-              onSelect: _this5.handleSelectEvent,
-              onDoubleClick: _this5.handleDoubleClickEvent,
+              onSelect: _this5.props.onSelectEvent,
+              onDoubleClick: _this5.props.onDoubleClickEvent,
             })
           )
         }
@@ -6441,7 +6441,7 @@ Calendar.propTypes =
          * ) => { className?: string, style?: Object }
          * ```
          */
-        eventPropGetter: PropTypes.func,
+        c: PropTypes.func,
 
         /**
          * Optionally provide a function that returns an object of className or style props
